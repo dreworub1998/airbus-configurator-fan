@@ -10,6 +10,8 @@
       darkMode: 'class',
     };
   </script>
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -276,7 +278,7 @@
               <div class="flex items-center gap-2 mt-2 flex-wrap">
                 <span data-i18n="badge_narrow" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800">Narrow Body</span>
                 <span data-i18n="badge_medium_haul" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">Medium Haul</span>
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"><span data-i18n="lead_a320">⏱️ Min 4 days</span></span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"><span data-i18n="lead_a320">⏱️️ Min 4 days</span></span>
               </div>
 
               <p data-i18n="desc_a320" class="text-slate-500 dark:text-slate-400 text-xs mt-3 line-clamp-2 leading-relaxed font-normal">
@@ -1066,6 +1068,28 @@
           </div>
         </div>
 
+        <!-- TABS: Active Orders vs Completed Orders -->
+        <div class="flex items-center gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <button 
+            type="button" 
+            id="tab-btn-active" 
+            onclick="setOrdersTab('active')" 
+            class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 bg-[#00205B] dark:bg-sky-600 text-white shadow-sm cursor-pointer"
+          >
+            <span data-i18n="tab_orders_active">Active Orders</span>
+            <span id="tab-count-active" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">0</span>
+          </button>
+          <button 
+            type="button" 
+            id="tab-btn-completed" 
+            onclick="setOrdersTab('completed')" 
+            class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            <span data-i18n="tab_orders_completed">Completed Orders</span>
+            <span id="tab-count-completed" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">0</span>
+          </button>
+        </div>
+
         <div id="orders-list-container" class="space-y-6"></div>
       </div>
     </div>
@@ -1130,7 +1154,7 @@
   <div id="fan-disclaimer" class="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-xl z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-slate-900/10 dark:shadow-black/40 transform translate-y-32 opacity-0 transition-all duration-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pointer-events-auto">
     <div class="flex items-start gap-3">
       <div class="w-9 h-9 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 font-bold text-lg">
-        ⚠️️
+        ⚠
       </div>
       <div>
         <h4 data-i18n="disclaimer_title" class="text-sm font-black text-slate-900 dark:text-white leading-tight">
@@ -1152,9 +1176,16 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT LOGIC & BILINGUAL ENGINE -->
+  <!-- JAVASCRIPT LOGIC, SUPABASE & BILINGUAL ENGINE -->
   <script>
-    var inMemoryOrders = [];
+    var SUPABASE_URL = 'https://niasfpqfzqxktpngjdd.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pYXNmcHFmcXpxeGt0cG5namRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMDg2NzQsImV4cCI6MjEwNjc4NDY3NH0.itGTFmkawmifUC9aajHInbA14SUuHsrGHyzVr2tufUU';
+
+    var supabaseClient = null;
+    if (typeof window !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
     var safeStorage = {
       get: function(key, fallback) {
         try {
@@ -1174,9 +1205,6 @@
           }
         } catch (e) {
           console.warn('Storage write restricted:', e);
-        }
-        if (key === 'airbus_orders') {
-          try { inMemoryOrders = JSON.parse(val); } catch(e) {}
         }
       }
     };
@@ -1212,8 +1240,8 @@
         lead_a220: "⏱️ Min 3 days",
         lead_a320: "⏱️ Min 4 days",
         lead_a330: "⏱️ Min 6 days",
-        lead_a340: "⏱️ Min 7 days",
-        lead_a350: "⏱️ Min 8 days",
+        lead_a340: "⏱ Min 7 days",
+        lead_a350: "⏱ Min 8 days",
         desc_a220: "Modern, quiet, and highly economical airliner designed for maximum passenger comfort on short and medium range routes.",
         desc_a320: "Premium aircraft designed for maximum efficiency and passenger comfort. The global benchmark of commercial narrow-body aviation.",
         desc_a330: "Renowned twin-aisle wide-body airliner offering airline operators versatile medium-to-long range efficiency with exceptionally quiet cabin comfort.",
@@ -1291,6 +1319,8 @@
         orders_page_title: "My Orders",
         orders_page_subtitle: "Real-time manufacturing tracking & delivery schedule",
         btn_new_aircraft_order: "+ New Aircraft Order",
+        tab_orders_active: "Active Orders",
+        tab_orders_completed: "Completed Orders",
         modal_title: "Aircraft Order Review",
         modal_subtitle: "Airbus Company Reservation",
         modal_field_aircraft: "Aircraft",
@@ -1309,6 +1339,10 @@
         btn_confirm_modal: "Confirm Order",
         no_orders_title: "No Orders Placed Yet",
         no_orders_desc: "Configure your aircraft specifications and submit your first aircraft reservation.",
+        no_active_orders_title: "No Active Orders",
+        no_active_orders_desc: "You have no aircraft currently on the assembly line or flight testing.",
+        no_completed_orders_title: "No Completed Orders Yet",
+        no_completed_orders_desc: "Orders will automatically appear here once their manufacturing and test flights finish.",
         btn_browse_fleet: "Browse Airbus Fleet",
         order_client: "Client:",
         order_delivery_to: "Delivery to:",
@@ -1326,6 +1360,7 @@
         stage4_title: "4. Ready for Delivery",
         stage4_sub: "Client handover",
         btn_cancel_res: "Cancel Reservation",
+        btn_delete_order: "Delete from History",
         paint_summary_classic: "Classic (All-white)",
         paint_summary_custom: "Custom livery (+5%)",
         toast_contact: "Sales desk: sales@airbus.com | Toulouse, France",
@@ -1334,8 +1369,8 @@
         toast_req_company: "Please enter your Company Name to continue.",
         toast_req_dest: "Please specify the destination Delivery Airport.",
         toast_req_paint: "Please describe your custom livery design.",
-        toast_order_placed: "Order confirmed! Assembly sequence scheduled.",
-        toast_order_cancelled: "Aircraft reservation cancelled.",
+        toast_order_placed: "Order confirmed! Saved to Supabase database.",
+        toast_order_cancelled: "Aircraft order removed from database.",
         toast_negotiate: "Offer submitted to Commercial Sales Committee. Our representative will contact you.",
         toast_rent: "Lease / Rental assessment loaded for ",
         toast_theme_dark: "Dark mode enabled",
@@ -1435,7 +1470,7 @@
         nonrp_title: "Нон-РП скорость (24x)",
         nonrp_badge: "Fast-Track",
         nonrp_desc: "1 день производства = 1 реальный час. Ускоряет сборку и сдачу самолёта в 24 раза!",
-        nonrp_eta_prefix: "⏱️️ Расчетное время готовности: через ",
+        nonrp_eta_prefix: "⏱ Расчетное время готовности: через ",
         nonrp_badge_order: "⚡ Нон-РП (24x)",
         btn_purchase_order: "🛒 Заказать самолёт",
         btn_negotiate_order: "🤝 Обсудить спеццену",
@@ -1443,6 +1478,8 @@
         orders_page_title: "Мои заказы",
         orders_page_subtitle: "Отслеживание цикла производства и график заводских поставок",
         btn_new_aircraft_order: "+ Новый заказ самолёта",
+        tab_orders_active: "Текущие заказы",
+        tab_orders_completed: "Выполненные заказы",
         modal_title: "Подтверждение бронирования",
         modal_subtitle: "Официальный заказ флота Airbus",
         modal_field_aircraft: "Самолёт",
@@ -1461,6 +1498,10 @@
         btn_confirm_modal: "Подтвердить заказ",
         no_orders_title: "Заказов пока нет",
         no_orders_desc: "Сконфигурируйте спецификацию воздушного судна и оформите первую заявку на поставку.",
+        no_active_orders_title: "Нет текущих заказов",
+        no_active_orders_desc: "Сейчас на сборочной линии нет ваших самолётов в процессе производства.",
+        no_completed_orders_title: "Выполненных заказов пока нет",
+        no_completed_orders_desc: "Заказы автоматически перейдут сюда, как только завершатся сборка, покраска и лётные испытания.",
         btn_browse_fleet: "Перейти к каталогу флота",
         order_client: "Заказчик:",
         order_delivery_to: "Доставка в:",
@@ -1478,6 +1519,7 @@
         stage4_title: "4. Готов к сдаче",
         stage4_sub: "Передача клиенту",
         btn_cancel_res: "Отменить бронь",
+        btn_delete_order: "Удалить из истории",
         paint_summary_classic: "Классическая (белая)",
         paint_summary_custom: "Собственная (+5%)",
         toast_contact: "Отдел продаж: sales@airbus.com | Тулуза, Франция",
@@ -1486,8 +1528,8 @@
         toast_req_company: "Пожалуйста, укажите название компании.",
         toast_req_dest: "Пожалуйста, укажите аэропорт доставки.",
         toast_req_paint: "Пожалуйста, опишите дизайн вашей собственной ливреи.",
-        toast_order_placed: "Заказ оформлен! Запущена заводская сборка.",
-        toast_order_cancelled: "Бронирование самолёта отменено.",
+        toast_order_placed: "Заказ сохранён в базе данных Supabase!",
+        toast_order_cancelled: "Заказ удалён из базы данных.",
         toast_negotiate: "Предложение направлено в коммерческий комитет продаж.",
         toast_rent: "Расчёт лизинга / аренды загружен для ",
         toast_theme_dark: "Тёмная тема включена",
@@ -1615,6 +1657,7 @@
       selectedEngineIndex: 0,
       selectedWingletIndex: 0,
       nonRpSpeed: false,
+      ordersTab: 'active',
       seats: {
         economy: 54,
         business: 18,
@@ -1628,12 +1671,6 @@
       orders: [],
       computed: {}
     };
-
-    try {
-      state.orders = JSON.parse(safeStorage.get('airbus_orders', '[]'));
-    } catch(e) {
-      state.orders = [];
-    }
 
     function formatEUR(val) {
       return '€' + Number(val).toLocaleString('en-US');
@@ -1649,7 +1686,7 @@
       if (theme === 'dark') {
         root.classList.add('dark');
         if (icon) icon.textContent = '☀️';
-        if (mIcon) mIcon.textContent = '☀️';
+        if (mIcon) mIcon.textContent = '☀';
       } else {
         root.classList.remove('dark');
         if (icon) icon.textContent = '🌙';
@@ -1710,6 +1747,24 @@
       updateLiveryUI();
       validateAndRefreshSeats();
       recalculatePrice();
+      renderOrders();
+    }
+
+    function setOrdersTab(tabName) {
+      state.ordersTab = tabName;
+      var btnActive = document.getElementById('tab-btn-active');
+      var btnCompleted = document.getElementById('tab-btn-completed');
+
+      var activeTabClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 bg-[#00205B] dark:bg-sky-600 text-white shadow-sm cursor-pointer";
+      var inactiveTabClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer";
+
+      if (btnActive) {
+        btnActive.className = (tabName === 'active') ? activeTabClass : inactiveTabClass;
+      }
+      if (btnCompleted) {
+        btnCompleted.className = (tabName === 'completed') ? activeTabClass : inactiveTabClass;
+      }
+
       renderOrders();
     }
 
@@ -1889,7 +1944,7 @@
           viewOrders.style.display = 'block';
         }
         if (navOrders) navOrders.className = "px-3.5 py-2 rounded-xl text-sm font-bold transition-all text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 flex items-center gap-2 relative cursor-pointer";
-        renderOrders();
+        fetchOrdersFromSupabase();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
@@ -2383,6 +2438,58 @@
       }
     }
 
+    function fetchOrdersFromSupabase() {
+      if (!supabaseClient) {
+        renderOrders();
+        updateOrdersBadge();
+        return;
+      }
+
+      supabaseClient
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(function(response) {
+          if (response.error) {
+            console.error('Supabase fetch error:', response.error);
+          } else if (response.data) {
+            state.orders = response.data.map(function(row) {
+              return {
+                id: row.id,
+                aircraft: row.aircraft,
+                code: row.code,
+                modelId: row.model_id,
+                quantity: row.quantity,
+                company: row.company,
+                deliveryDate: row.delivery_date,
+                destination: row.destination,
+                engine: row.engine,
+                wingletEn: row.winglet_en,
+                wingletRu: row.winglet_ru,
+                totalSeats: row.total_seats,
+                flyTests: row.fly_tests,
+                liveryMode: row.livery_mode,
+                paintDesc: row.paint_desc,
+                totalPrice: row.total_price,
+                createdAt: typeof row.created_at === 'number' ? row.created_at : Number(row.created_at || Date.now()),
+                deliveryTimestamp: typeof row.delivery_timestamp === 'number' ? row.delivery_timestamp : Number(row.delivery_timestamp || (Date.now() + 86400000)),
+                isNonRp: !!row.is_non_rp,
+                assemblyHours: row.assembly_hours,
+                paintHours: row.paint_hours,
+                minDays: row.min_days,
+                dateSubmitted: row.date_submitted
+              };
+            });
+            updateOrdersBadge();
+            renderOrders();
+          }
+        })
+        .catch(function(err) {
+          console.error('Supabase query error:', err);
+          renderOrders();
+        });
+    }
+
     function confirmOrder() {
       closeModal();
 
@@ -2407,49 +2514,92 @@
       }
 
       var wObj = plane.winglets[state.selectedWingletIndex];
-      var newOrder = {
-        id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+      var orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+
+      var dbPayload = {
+        id: orderId,
         aircraft: plane.code + ' ' + plane.title,
         code: plane.code,
-        modelId: plane.id,
+        model_id: plane.id,
         quantity: state.quantity,
         company: state.companyName,
-        deliveryDate: deliveryDateStr,
+        delivery_date: deliveryDateStr,
         destination: state.deliveryLocation,
         engine: plane.engines[state.selectedEngineIndex].name,
-        wingletEn: wObj.nameEn,
-        wingletRu: wObj.nameRu,
-        totalSeats: eco + bus + fst,
-        flyTests: state.flyTests,
-        liveryMode: state.liveryMode,
-        paintDesc: state.paintDescription,
-        totalPrice: state.computed.totalPrice,
-        createdAt: now,
-        deliveryTimestamp: deliveryTimestamp,
-        isNonRp: isNonRp,
-        assemblyHours: (plane.assemblyHours || 36) / speedDivisor,
-        paintHours: (plane.paintHours || 12) / speedDivisor,
-        minDays: minDays,
-        dateSubmitted: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        winglet_en: wObj.nameEn,
+        winglet_ru: wObj.nameRu,
+        total_seats: eco + bus + fst,
+        fly_tests: state.flyTests,
+        livery_mode: state.liveryMode,
+        paint_desc: state.paintDescription,
+        total_price: state.computed.totalPrice,
+        created_at: now,
+        delivery_timestamp: deliveryTimestamp,
+        is_non_rp: isNonRp,
+        assembly_hours: (plane.assemblyHours || 36) / speedDivisor,
+        paint_hours: (plane.paintHours || 12) / speedDivisor,
+        min_days: minDays,
+        date_submitted: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       };
 
-      state.orders.unshift(newOrder);
-      safeStorage.set('airbus_orders', JSON.stringify(state.orders));
-      updateOrdersBadge();
+      var memoryOrder = {
+        id: dbPayload.id,
+        aircraft: dbPayload.aircraft,
+        code: dbPayload.code,
+        modelId: dbPayload.model_id,
+        quantity: dbPayload.quantity,
+        company: dbPayload.company,
+        deliveryDate: dbPayload.delivery_date,
+        destination: dbPayload.destination,
+        engine: dbPayload.engine,
+        wingletEn: dbPayload.winglet_en,
+        wingletRu: dbPayload.winglet_ru,
+        totalSeats: dbPayload.total_seats,
+        flyTests: dbPayload.fly_tests,
+        liveryMode: dbPayload.livery_mode,
+        paintDesc: dbPayload.paint_desc,
+        totalPrice: dbPayload.total_price,
+        createdAt: dbPayload.created_at,
+        deliveryTimestamp: dbPayload.delivery_timestamp,
+        isNonRp: dbPayload.is_non_rp,
+        assemblyHours: dbPayload.assembly_hours,
+        paintHours: dbPayload.paint_hours,
+        minDays: dbPayload.min_days,
+        dateSubmitted: dbPayload.date_submitted
+      };
 
+      state.orders.unshift(memoryOrder);
+      updateOrdersBadge();
       showToast(t('toast_order_placed'));
       navigateTo('orders');
+
+      if (supabaseClient) {
+        supabaseClient
+          .from('orders')
+          .insert([dbPayload])
+          .then(function(res) {
+            if (res.error) {
+              console.error('Supabase insert error:', res.error);
+            } else {
+              fetchOrdersFromSupabase();
+            }
+          })
+          .catch(function(err) {
+            console.error('Supabase insert exception:', err);
+          });
+      }
     }
 
     function getManufacturingStatus(ord) {
       var now = Date.now();
-      var created = ord.createdAt || (now - 1000);
-      var target = ord.deliveryTimestamp || (created + (ord.minDays || 3) * 86400000);
+      var created = Number(ord.createdAt || ord.created_at || (now - 1000));
+      var target = Number(ord.deliveryTimestamp || ord.delivery_timestamp || (created + (ord.minDays || 3) * 86400000));
       var totalHours = Math.max(0.01, (target - created) / 3600000);
       var elapsedHours = Math.max(0, (now - created) / 3600000);
 
-      var assemblyH = ord.assemblyHours || (ord.isNonRp ? 1.5 : 36);
-      var paintH = ord.paintHours || (ord.isNonRp ? 0.5 : 12);
+      var isNonRp = !!(ord.isNonRp || ord.is_non_rp);
+      var assemblyH = ord.assemblyHours || ord.assembly_hours || (isNonRp ? 1.5 : 36);
+      var paintH = ord.paintHours || ord.paint_hours || (isNonRp ? 0.5 : 12);
 
       var stage = 1;
       var title = currentLang === 'ru' ? "В сборке" : "In Assembly";
@@ -2476,15 +2626,15 @@
         var testElapsed = (elapsedHours - assemblyH - paintH).toFixed(1);
         var testTotal = Math.max(0.1, totalHours - assemblyH - paintH).toFixed(1);
         description = currentLang === 'ru'
-          ? "Покраска завершена. Проводятся калибровки авионики и " + (ord.flyTests || 2) + " заводских лётных теста (" + testElapsed + " ч из " + testTotal + " ч)."
-          : "Painting complete. Avionics calibration and " + (ord.flyTests || 2) + " factory test flights underway (" + testElapsed + "h of " + testTotal + "h).";
+          ? "Покраска завершена. Проводятся калибровки авионики и " + (ord.flyTests || ord.fly_tests || 2) + " заводских лётных теста (" + testElapsed + " ч из " + testTotal + " ч)."
+          : "Painting complete. Avionics calibration and " + (ord.flyTests || ord.fly_tests || 2) + " factory test flights underway (" + testElapsed + "h of " + testTotal + "h).";
       } else if (elapsedHours >= assemblyH) {
         stage = 2;
         title = currentLang === 'ru' ? "Покраска" : "Painting & Livery";
         badgeClass = "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800";
         dotColor = "bg-purple-500";
         var paintProgress = (elapsedHours - assemblyH).toFixed(1);
-        var paintName = ord.paintDesc || (currentLang === 'ru' ? 'Классический белый' : 'Classic All-white');
+        var paintName = ord.paintDesc || ord.paint_desc || (currentLang === 'ru' ? 'Классический белый' : 'Classic All-white');
         description = currentLang === 'ru'
           ? "Нанесение грунтовки и ливреи (" + paintName + "). Прошло " + paintProgress + " ч из " + paintH.toFixed(1) + " ч."
           : "Applying primer coats and livery (" + paintName + "). Elapsed: " + paintProgress + "h of " + paintH.toFixed(1) + "h.";
@@ -2530,23 +2680,55 @@
       var container = document.getElementById('orders-list-container');
       if (!container) return;
 
-      if (state.orders.length === 0) {
+      var activeList = [];
+      var completedList = [];
+
+      for (var i = 0; i < state.orders.length; i++) {
+        var o = state.orders[i];
+        var st = getManufacturingStatus(o);
+        var itemWithMeta = {
+          order: o,
+          status: st,
+          originalIndex: i
+        };
+        if (st.stage >= 4) {
+          completedList.push(itemWithMeta);
+        } else {
+          activeList.push(itemWithMeta);
+        }
+      }
+
+      var countActiveEl = document.getElementById('tab-count-active');
+      var countCompletedEl = document.getElementById('tab-count-completed');
+      if (countActiveEl) countActiveEl.textContent = activeList.length;
+      if (countCompletedEl) countCompletedEl.textContent = completedList.length;
+
+      var currentTab = state.ordersTab || 'active';
+      var currentDisplayList = (currentTab === 'completed') ? completedList : activeList;
+
+      if (currentDisplayList.length === 0) {
+        var emptyTitle = (currentTab === 'completed') ? t('no_completed_orders_title') : t('no_active_orders_title');
+        var emptyDesc = (currentTab === 'completed') ? t('no_completed_orders_desc') : t('no_active_orders_desc');
+        var emptyIcon = (currentTab === 'completed') ? '🏁' : '📦';
+
         container.innerHTML = '<div class="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">' +
-            '<div class="text-4xl mb-3">📦</div>' +
-            '<h3 class="text-lg font-black text-slate-800 dark:text-white">' + t('no_orders_title') + '</h3>' +
-            '<p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">' + t('no_orders_desc') + '</p>' +
-            '<button type="button" onclick="navigateTo(\'fleet\')" class="mt-4 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer">' +
-              t('btn_browse_fleet') +
-            '</button>' +
+            '<div class="text-4xl mb-3">' + emptyIcon + '</div>' +
+            '<h3 class="text-lg font-black text-slate-800 dark:text-white">' + emptyTitle + '</h3>' +
+            '<p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">' + emptyDesc + '</p>' +
+            (currentTab === 'active' 
+              ? '<button type="button" onclick="navigateTo(\'fleet\')" class="mt-4 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer">' + t('btn_browse_fleet') + '</button>' 
+              : '') +
           '</div>';
         return;
       }
 
       var html = '';
-      for (var idx = 0; idx < state.orders.length; idx++) {
-        var ord = state.orders[idx];
-        var statusInfo = getManufacturingStatus(ord);
-        var wingletName = currentLang === 'ru' ? (ord.wingletRu || ord.wingletEn) : ord.wingletEn;
+      for (var idx = 0; idx < currentDisplayList.length; idx++) {
+        var item = currentDisplayList[idx];
+        var ord = item.order;
+        var statusInfo = item.status;
+        var origIdx = item.originalIndex;
+        var wingletName = currentLang === 'ru' ? (ord.wingletRu || ord.winglet_ru || ord.wingletEn || ord.winglet_en) : (ord.wingletEn || ord.winglet_en);
 
         var stage1Border = statusInfo.stage >= 1 ? (statusInfo.stage === 1 ? 'border-amber-400 bg-amber-50/70 dark:bg-amber-950/40 shadow-sm' : 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20') : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-50';
         var stage2Border = statusInfo.stage >= 2 ? (statusInfo.stage === 2 ? 'border-purple-400 bg-purple-50/70 dark:bg-purple-950/40 shadow-sm' : 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20') : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-50';
@@ -2563,8 +2745,8 @@
             '<div class="space-y-1.5">' +
               '<div class="flex items-center gap-2 flex-wrap">' +
                 '<span class="text-xs font-mono font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2.5 py-0.5 rounded-lg border border-sky-200 dark:border-sky-800">' + ord.id + '</span>' +
-                '<span class="text-xs text-slate-400 font-medium">• ' + ord.dateSubmitted + '</span>' +
-                (ord.isNonRp ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white shadow-xs">' + t('nonrp_badge_order') + '</span>' : '') +
+                '<span class="text-xs text-slate-400 font-medium">• ' + (ord.dateSubmitted || ord.date_submitted) + '</span>' +
+                (ord.isNonRp || ord.is_non_rp ? '<span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white shadow-xs">' + t('nonrp_badge_order') + '</span>' : '') +
                 '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border ' + statusInfo.badgeClass + '">' +
                   '<span class="w-2 h-2 rounded-full ' + statusInfo.dotColor + ' animate-pulse"></span>' +
                   statusInfo.title +
@@ -2574,12 +2756,12 @@
               '<p class="text-xs text-slate-600 dark:text-slate-400">' +
                 t('order_client') + ' <b class="text-slate-800 dark:text-slate-200">' + ord.company + '</b> | ' +
                 t('order_delivery_to') + ' <b class="text-slate-800 dark:text-slate-200">' + ord.destination + '</b> ' +
-                t('order_on_date') + ' <b class="text-slate-800 dark:text-slate-200">' + ord.deliveryDate + '</b>' +
+                t('order_on_date') + ' <b class="text-slate-800 dark:text-slate-200">' + (ord.deliveryDate || ord.delivery_date) + '</b>' +
               '</p>' +
             '</div>' +
             '<div class="text-left md:text-right">' +
               '<span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">' + t('fleet_total_lbl') + '</span>' +
-              '<span class="text-2xl font-black text-sky-600 dark:text-sky-400">' + formatEUR(ord.totalPrice) + '</span>' +
+              '<span class="text-2xl font-black text-sky-600 dark:text-sky-400">' + formatEUR(ord.totalPrice || ord.total_price) + '</span>' +
               '<div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">' + t('order_quantity_lbl') + ' <b>' + ord.quantity + ' ' + (currentLang === 'ru' ? 'самолётов' : 'planes') + '</b></div>' +
             '</div>' +
           '</div>' +
@@ -2635,14 +2817,14 @@
               '<span>•</span>' +
               '<span>' + t('sum_winglets_lbl') + ': <b class="text-slate-700 dark:text-slate-200">' + wingletName + '</b></span>' +
               '<span>•</span>' +
-              '<span>' + t('sum_seats_lbl') + ': <b class="text-slate-700 dark:text-slate-200">' + ord.totalSeats + ' ' + (currentLang === 'ru' ? 'мест' : 'pax') + '</b></span>' +
+              '<span>' + t('sum_seats_lbl') + ': <b class="text-slate-700 dark:text-slate-200">' + (ord.totalSeats || ord.total_seats) + ' ' + (currentLang === 'ru' ? 'мест' : 'pax') + '</b></span>' +
               '<span>•</span>' +
-              '<span>' + t('sec_livery_paint') + ': <b class="text-slate-700 dark:text-slate-200">' + (ord.paintDesc || 'Classic') + '</b></span>' +
+              '<span>' + t('sec_livery_paint') + ': <b class="text-slate-700 dark:text-slate-200">' + (ord.paintDesc || ord.paint_desc || 'Classic') + '</b></span>' +
               '<span>•</span>' +
-              '<span>' + t('sum_tests_lbl') + ': <b class="text-slate-700 dark:text-slate-200">' + ord.flyTests + '</b></span>' +
+              '<span>' + t('sum_tests_lbl') + ': <b class="text-slate-700 dark:text-slate-200">' + (ord.flyTests || ord.fly_tests) + '</b></span>' +
             '</div>' +
-            '<button type="button" onclick="cancelOrder(' + idx + ')" class="text-xs font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer">' +
-              t('btn_cancel_res') +
+            '<button type="button" onclick="cancelOrder(\'' + ord.id + '\', ' + origIdx + ')" class="text-xs font-bold text-red-500 hover:text-red-700 hover:underline cursor-pointer">' +
+              (statusInfo.stage >= 4 ? t('btn_delete_order') : t('btn_cancel_res')) +
             '</button>' +
           '</div>' +
         '</div>';
@@ -2650,12 +2832,31 @@
       container.innerHTML = html;
     }
 
-    function cancelOrder(idx) {
-      state.orders.splice(idx, 1);
-      safeStorage.set('airbus_orders', JSON.stringify(state.orders));
+    function cancelOrder(orderId, origIdx) {
+      if (typeof origIdx === 'number' && origIdx >= 0 && origIdx < state.orders.length) {
+        state.orders.splice(origIdx, 1);
+      } else {
+        state.orders = state.orders.filter(function(o) { return o.id !== orderId; });
+      }
+
       updateOrdersBadge();
       renderOrders();
       showToast(t('toast_order_cancelled'));
+
+      if (supabaseClient && orderId) {
+        supabaseClient
+          .from('orders')
+          .delete()
+          .eq('id', orderId)
+          .then(function(res) {
+            if (res.error) {
+              console.error('Supabase delete error:', res.error);
+            }
+          })
+          .catch(function(err) {
+            console.error('Supabase delete exception:', err);
+          });
+      }
     }
 
     var toastTimeout;
@@ -2729,6 +2930,8 @@
         applyTheme(currentTheme);
         setLanguage(currentLang);
         updateLiveryUI();
+        fetchOrdersFromSupabase();
+
         if (safeStorage.get('airbus_disclaimer_accepted', 'false') !== 'true') {
           setTimeout(function() {
             showDisclaimer();
@@ -2740,6 +2943,7 @@
     }
 
     window.setLanguage = setLanguage;
+    window.setOrdersTab = setOrdersTab;
     window.applyTheme = applyTheme;
     window.toggleTheme = toggleTheme;
     window.setLiveryMode = setLiveryMode;
